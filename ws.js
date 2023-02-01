@@ -1,7 +1,11 @@
+
+// set object border thickness
 CONFIG.Canvas.objectBorderThickness = 2;
 //CONFIG.debug.hooks= true;
 //Hooks.on('renderNotifications', ()=>{if (game.user.isGM) game.logOut()})
 
+
+// do not show EZD6 mini sheets
 Hooks.on('renderMiniCharSheet', (app, html)=>{
   html.css({display:'none'})
   html.ready(function(){app.close()})
@@ -17,6 +21,7 @@ Hooks.on('getEZD6CharacterSheetHeaderButtons',(app, buttons)=>{
 })
 
 
+// add player targets under their token in the combat tracker
 Hooks.on('renderCombatTracker', (app, html, options)=>{
   let combat = app.viewed;
   if (!combat) return;
@@ -42,6 +47,7 @@ Hooks.on('targetToken', ()=>{
 
 
 
+// rotate tokens toward new location before the movement animation
 var tokenRotateThenMove = async function(tokenDocument, update){
   if (!update.x) update.x = tokenDocument.x;
   if (!update.y) update.y = tokenDocument.y;
@@ -68,13 +74,7 @@ Hooks.on("preUpdateToken", (tokenDocument, update, options) => {
   }
 });
 
-Hooks.on("preUpdateActor", (actor, update, options) => {
-  if (game.user.isGM) return;
-  if (foundry.utils.hasProperty(update, 'system.karma') ){
-    delete update.x
-  }
-});
-
+// dragging a token will show it's new rotation and a grabbing cursor
 Hooks.on('refreshToken', (token)=>{
   if (token.layer.preview?.children[0]) {
     let clone = token.layer.preview?.children.find(c=>c.id==token.id)
@@ -85,22 +85,29 @@ Hooks.on('refreshToken', (token)=>{
   }
 });
 
+// prevent players from adding EZD6 resources
+Hooks.on("preUpdateActor", (actor, update, options) => {
+  if (game.user.isGM) return;
+  if (foundry.utils.hasProperty(update, 'system.karma') ){
+    delete update.x
+  }
+});
+
+
+// created tokens have default cursor for non-owners
 Hooks.on("createToken", (data) => {
   let token = canvas.tokens.get(data.id)
   if (!token.owner) token.cursor = "default"
 })
 
+// placed tokens have default cursor for non-owners
 Hooks.once("canvasReady", () => {
   canvas.tokens.placeables.forEach(t => {
       if (!t.owner) t.cursor = "default"
   })
 })
-/*
-Hooks.on('renderJournalImagePageSheet', (sheet, html, options)=>{
-  html.find('img').attr('draggable', true);
-})
-*/
 
+// no token borders
 Hooks.on('init', ()=>{
   console.log('registering token prototype hooks')
   libWrapper.register('ws', 'Token.prototype._refreshBorder', function(wrapped, ...args){
@@ -119,25 +126,16 @@ Hooks.on('init', ()=>{
     this.cursor = 'pointer';
     wrapped(...args);
   }, 'MIXED')
-/*
-  libWrapper.register('ws', 'Token.prototype._getTextStyle', function(wrapped, ...args) {
-    const style = CONFIG.canvasTextStyle.clone();
-    style.fontSize = 12;
-    style.wordWrapWidth = this.w * 2.5;
-    return style;
-  }, 'OVERRIDE')
-*/
 })
 
-
-//if (!game.user.isGM) game.logOut();
+// do not show the game as paused for players 
+/*
 Hooks.on('ready', ()=>{
   if (!game.user.isGM) $('head').append($(`<style>#pause{display:none;}</style>`));
-  ui.chat.processMessage('/m Macro Manager');
 });
+*/
 
-
-
+// hide ui from players
 /*
 Hooks.on('ready', ()=>{
   if (game.user.isGM) return;
@@ -147,18 +145,20 @@ Hooks.on('ready', ()=>{
   game.user.character.sheet.render(true)
 })
 */
+
+// #inline-table-rolls
 CONFIG.TextEditor.enrichers.push({pattern:/\[\[#(.*?)\]\]/gi, enricher: async function enricher (match, options){
-  // #inline-table-rolls
   let tableName = match[0].replace(`[[#`,``).replace(`]]`,``).trim();
   let tableRoll = await game.tables.getName(tableName).roll();
   if (!tableRoll) return match[0];
   let element = $(`<span>${tableRoll.results[0].text}</span>`)[0];
   return element;
 }});
+// !inline-chats
 /*
 //CONFIG.TextEditor.enrichers.findSplice((f)=>f.enricher.toString().includes("//!inline-chats"))
 CONFIG.TextEditor.enrichers.push({pattern:/\[\[!(.*?)\]\]/gi, enricher:  function enricher (match, options){
-  // !inline-chats
+  
   let text = match[0].replace(`[[!`,``).replace(`]]`,``).trim();
   //if (!!options.relativeTo) text = Roll.replaceFormulaData(text, options.relativeTo.getRollData());
   //let text = match[0].replace('{{!','').replace('}}','').trim();
@@ -168,7 +168,8 @@ CONFIG.TextEditor.enrichers.push({pattern:/\[\[!(.*?)\]\]/gi, enricher:  functio
   return element;
 }});
 */
-// discord formatting 
+
+// discord-like formatting potentially breaks things
 /*
 CONFIG.TextEditor.enrichers.push({pattern:/(~){2}(.+)(~){2}/g, enricher:  function enricher (match, options){
   if (match[0].includes('<')) return match[0];
@@ -185,12 +186,10 @@ CONFIG.TextEditor.enrichers.push({pattern:/(`){1}(.+)(`){1}/g, enricher:  functi
   return $(match[0].replace('`', `<code>`).split('').reverse().join('').replace('`',`>edoc/<`).split('').reverse().join(''))[0];
 }});
 
-
 CONFIG.TextEditor.enrichers.push({pattern:/\*{2}(.+)\*{2}/gi, enricher:  function enricher (match, options){
   if (match[0].includes('<')) return match[0];
   return $(match[0].replace(`**`,`<b>`).split('').reverse().join('').replace(`**`,`>b/<`).split('').reverse().join(''))[0];
 }});
-
 
 CONFIG.TextEditor.enrichers.push({pattern:/\*{1}(.+)\*{1}/gi, enricher:  function enricher (match, options){
   if (match[0].includes('<')) return match[0];
@@ -199,7 +198,7 @@ CONFIG.TextEditor.enrichers.push({pattern:/\*{1}(.+)\*{1}/gi, enricher:  functio
 }});
 */
 
-
+// add assign as character option to actor directory
 Hooks.on('getActorDirectoryEntryContext', (app, options)=>{
   options.push(
     {
@@ -217,6 +216,7 @@ Hooks.on('getActorDirectoryEntryContext', (app, options)=>{
   )
 })
 
+// position sidebar popouts next to sidebar
 Hooks.on('renderSidebarTab', (app, html, options)=>{
   //console.log(app, html, options)
   //app.options.classes.push('resizable')
@@ -227,18 +227,20 @@ Hooks.on('renderSidebarTab', (app, html, options)=>{
   //html.append('<div class="window-resizable-handle"><i class="fas fa-arrows-alt-h"></i></div>')
   app.setPosition({top : 0, left : (ui.sidebar._collapsed?window.innerWidth-340:window.innerWidth-610), height: (options.tabName=="chat"?window.innerheight-30:'auto')});
 });
-/*
+
+// focus search input on macro directory on refresh
 Hooks.on("renderMacroDirectory", (app, html)=>{
   html.find("input[name='search']").focus();
-  html.find("h4.window-title").after($(`<a><i class="fa-solid fa-table-cells"></i></a>`).click(function(){ui.chat.processMessage('/"Macro Manager"')}));
-})*/
+})
 
+// delete all of an actor's tokens from scenes when the actor is deleted
 Hooks.on('deleteActor', async (actor)=>{
   let tokens = actor.getActiveTokens();
   await Promise.all(tokens.map(async t=> { return await t.scene.deleteEmbeddedDocuments("Token", [t.document.id])}))
   return true;
 })
 
+// set scene defaults
 Hooks.on('preCreateScene', (scene)=>{
   scene.data.update({
     fogExploration:false, 
@@ -247,6 +249,8 @@ Hooks.on('preCreateScene', (scene)=>{
    //, grid: {alpha:1, color: "#0000FF"}
   })
 })
+
+// prevent players from changing their tokens
 /*
 Hooks.on('preUpdateToken',(token, update, options, userId)=>{
     if (!game.users.get(userId).isGM) {
@@ -255,13 +259,13 @@ Hooks.on('preUpdateToken',(token, update, options, userId)=>{
     }
 });
 */
+
+// make image popout's draggable so you can drag them to editors
 Hooks.on('renderImagePopout', (app, html)=>{
   html.find('img').attr('draggable', true)
 });
 
-
-
-
+// collapse journal page headers and add toggle button & make journal images draggable
 Hooks.on('renderJournalPageSheet', (JournalSheet, html)=>{
   html.find('img').attr('draggable', true).on('dragstart',function(e) {
     e.srcElement = null;
@@ -293,19 +297,8 @@ Hooks.on('renderJournalPageSheet', (JournalSheet, html)=>{
     if ($(this).next().length) $button.clone(true).appendTo($(this))
   })
 });
-/*
-Hooks.on('renderJournalPageSheet', (JournalSheet, html)=>{
-  html.find(`li[data-page-id="${JournalSheet.object._id}"] > div`).next().hide();
-  let $button = $(`<a class="toggle" style="width:50px; text-align: right; padding-right: .5em;"><i class="fa-solid fa-caret-down"></i></a>`)
-  .click(function(){
-    $(this).parent().next().toggle();
-    $(this).parent().next().is(':hidden')?$(this).html('<i class="fa-solid fa-caret-down"></i>'):$(this).html('<i class="fa-solid fa-caret-up"></i>')
-  })
-  html.find(`li[data-page-id="${JournalSheet.object._id}"] > div`).append($button)
-});
-*/
 
-
+// rearrange token hud controls & add token delete control
 Hooks.on('renderTokenHUD', (app, html, hudData)=>{
   html.find('div[data-action="visibility"] img').replaceWith(`<i class="fas fa-eye-slash"></i>`);
   if (!game.user.isGM) return;
@@ -320,6 +313,8 @@ Hooks.on('renderTokenHUD', (app, html, hudData)=>{
   html.find('div.control-icon[data-action="config"]').appendTo('.col.left');
   html.find('div.open-mini').remove()
 });
+
+// turn timer macro automation 
 /*
 Hooks.on("updateCombat", (combat, updates) => {
   if (!game.combat?.started)
@@ -328,17 +323,23 @@ Hooks.on("updateCombat", (combat, updates) => {
     game.macros.getName("Turn Timer")?.execute();
 });
 */
+
+// set chat control icon event
+/*
 $('#chat-controls').find('.chat-control-icon').click(()=>{
-
-
   //ui.chat.processMessage('/m Dice Tray');
 })
+*/
+
+// add scroll to bottom button for to chat controls
 Hooks.on('renderChatLog', (app, html)=>{
   html.find(`div.control-buttons`).css('flex', '0 0 auto').append(`<a class="scroll-bottom" style="float:right;" onclick="ui.chat.scrollBottom()"><i class="fas fa-down"></i></a>`);
   html.find('#chat-form').css('flex', '0 0 80px');
   //html.find('.chat-control-icon').click(()=>{ui.chat.processMessage('/m Dice Tray');})
 });
 
+// allow GM to delete dice terms from chat rolls by clicking on them
+/*
 Hooks.on('itit', ()=>{
 if (game.user.isGM) 
 Hooks.on('renderChatMessage', (message, html)=>{
@@ -373,44 +374,11 @@ Hooks.on('renderChatMessage', (message, html)=>{
   });
 });
 })
-
-//Hooks.on(`renderChatMessage`, async (message, html) => {
-  //chatmessagetargethit
-  //console.log([...game.user.targets]);
-  /*
-  if ( message.data.flavor?.toUpperCase().includes('ATTACK') && !!message.roll[0] 
-  || !message.data.flavor?.toUpperCase().includes('SAVE') && !!message.roll[0]?._formula?.includes('d20') && !!message.data.flags?.world?.targetIds) {
-    //console.log(message.data.flags?.world?.targetIds)
-    let actor = canvas.tokens.get(message.data.flags?.world?.targetIds[0])?.actor;
-    if (actor)
-      if (message.roll[0].total >= actor.data.data?.attributes?.ac?.value)
-        html.find('.dice-total').after('<center><small>Hits<small></center>')
-      else
-        html.find('.dice-total').after('<center><small>Misses<small></center>')
-    
-  }*/
-  /*
-  if (message.data.flavor?.toUpperCase().includes('CASTS') && !!message.roll[0]) {
-    if (message.rolls[0].total >= 10)
-      html.find('.dice-total').after('<center><small>Spell Succeeds<small></center>')
-    else
-      html.find('.dice-total').after('<center><small>Spell Fails<small></center>')
-  }
-  if (!message.data.flags?.world?.targetIds) return;
 */
 
-  //html.find('.flavor-text').append(`<br>Target${message.data.flags.world.targetIds.length>1?'s':''}:`)
-  /*
-  for (let target of message.data.flags?.world?.targetIds) {
-    let actor = canvas.tokens.get(target)?.actor;
-    if (!actor) continue;
-    html.find('.flavor-text').append(`<br>${(message.roll[0].total >= actor.data.data?.attributes?.ac?.value)?'Hits ':'Misses '} <a onclick="canvas.tokens.get('${target}').control()">${actor.name}</a>`);
-  }*/
-  //let $targets = `<br>Target${message.data.flags.world.targetIds.length>1?'s':''}: ${message.data.flags.world.targetIds.map(t=>canvas.tokens.get(t).name).join(', ')}`;
-  //html.find('.flavor-text').append($targets)
-//});
 //CONFIG.sounds.dice=null;
 
+// style dice roll messages
 Hooks.on('renderChatMessage', (message, html)=>{
   if (!message.rolls[0]) return;
   //if (!message.rolls[0]?.terms) return;
@@ -435,6 +403,8 @@ Hooks.on('renderChatMessage', (message, html)=>{
   $diceTooltip.append($tooltipPart)
   html.find("div.dice-formula").after($diceTooltip);
 });
+
+// effect countdown
 /*
 Hooks.on("updateCombat", (combat) => {
   console.log(combat.combatant)
@@ -442,6 +412,8 @@ Hooks.on("updateCombat", (combat) => {
   if (update.length) combat.combatant.actor.updateEmbeddedDocuments("ActiveEffect", update);
 });
 */
+
+// function for creating a dialog that might get created again with the same id
 Object.getPrototypeOf(Dialog).persist = function(data, options) {
   let w = Object.values(ui.windows).find(w=> w.id===options.id);
   let position = w?.position || {};
@@ -457,7 +429,8 @@ const getActorByUuid = async function (uuid) {
   const actor = actorToken?.actor ? actorToken?.actor : actorToken;
   return actor;
 }
-//ui.chat.processMessage('/m Taskbar');
+
+// log actor changes to a journal
 /*
 Hooks.on('updateActor', async (actor, updateData, options, userId) => {
   let log = game.journal.getName('Actor Change Log');
@@ -465,66 +438,35 @@ Hooks.on('updateActor', async (actor, updateData, options, userId) => {
 });  
 */
 
-Hooks.on(`getMacroConfigHeaderButtons`, async (...args) => { 
-  args[1].unshift({
+// add maximize button to macro config
+Hooks.on(`getMacroConfigHeaderButtons`,  (app, buttons) => { 
+  buttons.unshift({
     label: 'Maximize',
     class: 'Maximize',
     icon: 'far fa-window-maximize',
     onclick: ()=>{
-      ui.windows[args[0].appId].setPosition({top:5, left:5, })
-      ui.windows[args[0].appId].setPosition({height: window.innerHeight - 50, width: window.innerWidth - 315})} 
+      ui.windows[app.appId].setPosition({top:5, left:5, })
+      ui.windows[app].appId].setPosition({height: window.innerHeight - 50, width: window.innerWidth - 315})} 
   });
 });
 
-/*
-if (game.user.isGM && false) {
-  Hooks.on(`updateCombat`, async (combat, changed, options, userId) => {
-    //console.log(combat);
-    // CharacterDialogOnTurnHook
-    $(`div[id^=items-dialog-], div[id^=item-rolls-dialog-]`).hide();
-    
-    let combatantToken = canvas.tokens.get(combat.current.tokenId);
-    combatantToken.control({releaseOthers: true});
-    canvas.animatePan({x: combatantToken.data.x, y: combatantToken.data.y});
-    game.user.updateTokenTargets([]);
-    let combatant_t = combat.combatant.actor.uuid.replaceAll('.','_');
-    let combatantDialog = $(`div[id*=${combatant_t}]`);
-    if (!combatantDialog.length) {
-      game.macros.find(m=>m.data.flags.world?.name==='Character Dialog').execute();
-    }
-    $(`div[id*=${combatant_t}]`).show();
-  });
-  //ui.notifications.info('Character Dialog On Turn Hook Added');
-} 
-*/
-
-if (game.paused && !game.user.isGM) $('textarea#chat-message').prop('disabled', true);
-
-Hooks.on(`pauseGame`, (paused) => { 
-  if (!game.user.isGM)
-    $('textarea#chat-message').prop('disabled', paused);
-});
-/*
-Hooks.on(`renderChatLog`, (app, html, data) => {
-  if (!game.user.isGM)
-    html.find('textarea#chat-message').prop('disabled', game.paused);
-});
-*/
-
-Hooks.on(`createMacro`, async (...args) => { 
+// put created macros in the user's folder
+Hooks.on(`createMacro`, async (macro) => { 
   let u = game.user;
   let userMacroFolder = game.folders.find(f => f.name === u.name && f.type === 'Macro');
   //if (!userMacroFolder) userMacroFolder = await Folder.create({name : u.name , type : 'Macro'});
-  await args[0].update({type: "script"});
+  await macro.update({type: "script"});
 });
 
+// move expand sidebar control to the top to match where the collapse control is when expanded
 Hooks.on('collapseSidebar', (sidebar, collapsed)=>{
   if (collapsed) sidebar.element.find('#sidebar-tabs').prepend($('#sidebar').find('a.collapse[data-tooltip="Collapse or Expand"]'))
   else sidebar.element.find('#sidebar-tabs').append($('#sidebar').find('a.collapse[data-tooltip="Collapse or Expand"]'))
 })
 
+// on ready
 Hooks.on('ready', ()=>{
-  
+  // hide up macro config options and create toggle
   Hooks.on(`renderMacroConfig`, (app, html) => { 
     html.find('div.form-group').toggle();
       html.find('div.form-group.command').show();
@@ -539,9 +481,11 @@ Hooks.on('ready', ()=>{
     html.find('header.sheet-header h1 input ').attr('style', "height: 32px; line-height: 30px; margin: 8px; width:  calc(100% - 8px)");
   });
   
+  // collapse sidebar
   ui.sidebar.collapse()
 });
 
+// add buttons to scene config to activate or view scene
 Hooks.on('renderSceneConfig', (app, html)=>{
   let $viewButton = $(`<button name="view"><i class="fas fa-eye fa-fw"></i> View</button>`).click(function(){app.document.view()});
   let $activateButton = $(`<button name="activate"><i class="fas fa-bullseye fa-fw"></i> Activate</button>`).click(function(){app.document.activate()});
@@ -549,6 +493,7 @@ Hooks.on('renderSceneConfig', (app, html)=>{
   app.setPosition({height: 'auto'})
 });
 
+// allow scenes to be viewed by dropping to the canvas and holding shift will activate the scene
 Hooks.on('dropCanvasData', (canvas, data)=>{
   if (!game.user.isGM) return;
   if (data.type == "Scene") {
@@ -558,6 +503,7 @@ Hooks.on('dropCanvasData', (canvas, data)=>{
   }
 });
 
+// add apply button to macro config (from Monk's Little Details)
 Hooks.on("renderMacroConfig", (app, html, data) => {
   $('.sheet-footer', html).prepend(
       $("<button>")
@@ -566,39 +512,11 @@ Hooks.on("renderMacroConfig", (app, html, data) => {
           .on("click", (event) => { app._onSubmit.call(app, event, { preventClose: true }) }));
 })
 
-
+// add target flags to chat messages
 /*
-Hooks.on(`renderChatMessage`, (message, html, data) => { 
-  //removeflavortext from gamemaster rolls for players
-  if (message.data?.user===game.users?.getName('Gamemaster')?.id && !game.user.isGM && message.data.roll?.length>0){
-    html.find('header.message-header span.flavor-text')[0].remove();
-    html.find('div.message-content div.dice-roll div.dice-result div.dice-formula')[0].remove();
-  }
-});
-*/
-/*
-Hooks.on(`restCompleted`, (actorEntity, data) => { 
-  game.macros.getName('Vitality on restCompleted').execute(actorEntity, data);
-});
-    */
 if (!Hooks.events.preCreateChatMessage || Hooks.events.preCreateChatMessage?.findIndex(f=>f.fn.toString().includes('chatmessagetargetflags'))==-1)
   Hooks.on(`preCreateChatMessage`, async (message, data, options, user) => {
-    //chatmessagetargetflags
-    /*
-    console.log(message.data.flavor?.toUpperCase().includes('ATTACK') && !game.user.targets.size);
-    if (message.data.flavor?.toUpperCase().includes('ATTACK') && !game.user.targets.size) {
-      console.log('waiting for targets')
-      let r = await new Promise((resolve)=>{
-        Dialog.prompt({
-         title: 'Select a Target',
-         content:  '',
-         callback: html => {
-              resolve(true);
-            },
-         options: {width: 200}
-        });
-      });
-    }*/
+    
     if (message.data.flavor?.toUpperCase().includes('ATTACK') || message.data.flavor?.toUpperCase().includes('CAST'))
       message.data.update({"flags.world.targetIds": [...game.user.targets].filter(t=>t.visible).map(t=>t.id)});
     
@@ -616,19 +534,23 @@ if (!Hooks.events.preCreateChatMessage || Hooks.events.preCreateChatMessage?.fin
       message.data.update({"flags.world.targetIds": [...game.user.targets].filter(t=>t.visible).map(t=>t.id)});
     
   });
+*/
 
-Hooks.on('preCreateJournalEntry', (...args)=>{
-  console.log(...args)
+// give all player's observer permissions to journals created by players
+Hooks.on('preCreateJournalEntry', (journal)=>{
   if (!game.user.isGM)
-    args[0].data.update({"permission.default":CONST.DOCUMENT_PERMISSION_LEVELS.OBSERVER});
+    journal.data.update({"permission.default":CONST.DOCUMENT_PERMISSION_LEVELS.OBSERVER});
 });
 
-Hooks.on('preDeleteChatMessage', (...args)=>{
-  if (!game.user.isGM && args[0]._roll) {
+// prevent users from deleting messages with rolls
+Hooks.on('preDeleteChatMessage', (message)=>{
+  if (!game.user.isGM && message.rolls?.length) {
     ui.notifications.warn("No deleting rolls");
     return false;
   }
 });
+
+// add scene controls
 /*
 Hooks.on("getSceneControlButtons",(controlButtons) => {
   
